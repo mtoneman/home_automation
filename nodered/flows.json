@@ -1,1 +1,307 @@
-[{"id":"524f2e50.b84bf","type":"tab","label":"ESPHome Sonoff to Domoticz MQTT Binding","disabled":false,"info":""},{"id":"c502319b.76771","type":"mqtt-broker","z":"","name":"local mosquitto","broker":"localhost","port":"1883","clientid":"","usetls":false,"compatmode":true,"keepalive":"60","cleansession":true,"birthTopic":"","birthQos":"0","birthPayload":"","closeTopic":"","closeQos":"0","closePayload":"","willTopic":"","willQos":"0","willPayload":""},{"id":"be7a294a.1db7b8","type":"mqtt in","z":"524f2e50.b84bf","name":"ESPHome Switch Status","topic":"+/switch/sonoff_basic_relay/state","qos":"2","datatype":"utf8","broker":"c502319b.76771","x":270,"y":359,"wires":[["6606f86e.2225b8","ec2ca25d.b1c3e"]]},{"id":"cc07dcd3.13fe1","type":"mqtt out","z":"524f2e50.b84bf","name":"Domoticz in","topic":"domoticz/in","qos":"","retain":"","broker":"c502319b.76771","x":910,"y":360,"wires":[]},{"id":"8efdafbd.4f497","type":"mqtt out","z":"524f2e50.b84bf","name":"ESPHome Switch Command","topic":"","qos":"","retain":"","broker":"c502319b.76771","x":860,"y":480,"wires":[]},{"id":"39815814.681578","type":"debug","z":"524f2e50.b84bf","name":"","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"payload","targetType":"msg","x":690,"y":320,"wires":[]},{"id":"8374892d.6c3f78","type":"mqtt in","z":"524f2e50.b84bf","name":"Domoticz out","topic":"domoticz/out","qos":"2","datatype":"auto","broker":"c502319b.76771","x":230,"y":480,"wires":[["aed45624.e099e8"]]},{"id":"aed45624.e099e8","type":"json","z":"524f2e50.b84bf","name":"","property":"payload","action":"","pretty":false,"x":410,"y":480,"wires":[["3cb12eeb.bad8e2"]]},{"id":"3cb12eeb.bad8e2","type":"function","z":"524f2e50.b84bf","name":"translate","func":"if(!(msg.payload.idx in global.get(\"domdevices\"))) {\n    return;\n}\n\nvar espdev = global.get(\"domdevices\")[msg.payload.idx];\n\n\nvar state=\"off\"\nif(msg.payload.nvalue == 1) {\n    state=\"on\"\n}\n\nvar newMsg = { payload: state,\n   topic: espdev + \"/switch/sonoff_basic_relay/command\"\n};\nreturn newMsg;   \n\n\n","outputs":1,"noerr":0,"x":600,"y":480,"wires":[["f9ae3233.95404","8efdafbd.4f497"]]},{"id":"f9ae3233.95404","type":"debug","z":"524f2e50.b84bf","name":"","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"topic","targetType":"msg","x":760,"y":434,"wires":[]},{"id":"6606f86e.2225b8","type":"function","z":"524f2e50.b84bf","name":"translate","func":"var espdev = msg.topic.split(\"/\")[0];\n\nif(!(espdev in global.get(\"espdevices\"))) {\n    return;\n}\n\nvar domidx = global.get(\"espdevices\")[espdev];\n\nvar state={  \"idx\" : domidx,  \"nvalue\" : 0,  \"svalue\" : \"Off\" }\n\nif(msg.payload == \"ON\") {\n    state={  \"idx\" : domidx,  \"nvalue\" : 1,  \"svalue\" : \"On\" }\n}\n\nreturn { payload: state };   \n","outputs":1,"noerr":0,"x":520,"y":359,"wires":[["cc07dcd3.13fe1","39815814.681578"]]},{"id":"b1c54773.205dd8","type":"inject","z":"524f2e50.b84bf","name":"","topic":"","payload":"{\"irrigation_front\":213,\"irrigation_rear\":214}","payloadType":"json","repeat":"","crontab":"","once":true,"onceDelay":0.1,"x":230,"y":140,"wires":[["6f2f8fb1.0a532","19345aa3.af6f95"]]},{"id":"6f2f8fb1.0a532","type":"change","z":"524f2e50.b84bf","name":"","rules":[{"t":"set","p":"espdevices","pt":"global","to":"payload","tot":"msg"}],"action":"","property":"","from":"","to":"","reg":false,"x":640,"y":140,"wires":[[]]},{"id":"295e6315.acadfc","type":"change","z":"524f2e50.b84bf","name":"","rules":[{"t":"set","p":"domdevices","pt":"global","to":"payload","tot":"msg"}],"action":"","property":"","from":"","to":"","reg":false,"x":640,"y":200,"wires":[[]]},{"id":"a7a3ea3.b9aa718","type":"comment","z":"524f2e50.b84bf","name":"Send domoticz command to ESPHome switch","info":"","x":330,"y":440,"wires":[]},{"id":"2bc710c0.d08f4","type":"comment","z":"524f2e50.b84bf","name":"Send ESPHome switch status back to domoticz","info":"","x":340,"y":317,"wires":[]},{"id":"e75228c3.b92258","type":"comment","z":"524f2e50.b84bf","name":"Configuration mapping globals","info":"","x":280,"y":100,"wires":[]},{"id":"19345aa3.af6f95","type":"function","z":"524f2e50.b84bf","name":"reverse dict","func":"var newMsg = {};\n\nvar ret = {};\nObject.keys(msg.payload).forEach(key => {\n    ret[msg.payload[key]] = key;\n  });\n//newMsg.payload = msg.payload;\n// = Object.assign({}, ...Object.entries(msg.payload).map(([a,b]) => ({ [b]: a })))\n\nnewMsg.payload = ret;\nreturn newMsg;","outputs":1,"noerr":0,"x":432,"y":200,"wires":[["295e6315.acadfc"]]},{"id":"ec2ca25d.b1c3e","type":"debug","z":"524f2e50.b84bf","name":"","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","x":610,"y":280,"wires":[]}]
+[
+    {
+        "id": "524f2e50.b84bf",
+        "type": "tab",
+        "label": "ESPHome Sonoff to Domoticz MQTT Binding",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "c502319b.76771",
+        "type": "mqtt-broker",
+        "z": "",
+        "name": "local mosquitto",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "",
+        "usetls": false,
+        "compatmode": true,
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": ""
+    },
+    {
+        "id": "be7a294a.1db7b8",
+        "type": "mqtt in",
+        "z": "524f2e50.b84bf",
+        "name": "ESPHome Switch Status",
+        "topic": "+/switch/sonoff_basic_relay/state",
+        "qos": "2",
+        "datatype": "utf8",
+        "broker": "c502319b.76771",
+        "x": 270,
+        "y": 359,
+        "wires": [
+            [
+                "6606f86e.2225b8",
+                "ec2ca25d.b1c3e"
+            ]
+        ]
+    },
+    {
+        "id": "cc07dcd3.13fe1",
+        "type": "mqtt out",
+        "z": "524f2e50.b84bf",
+        "name": "Domoticz in",
+        "topic": "domoticz/in",
+        "qos": "",
+        "retain": "",
+        "broker": "c502319b.76771",
+        "x": 910,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "8efdafbd.4f497",
+        "type": "mqtt out",
+        "z": "524f2e50.b84bf",
+        "name": "ESPHome Switch Command",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "broker": "c502319b.76771",
+        "x": 860,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "39815814.681578",
+        "type": "debug",
+        "z": "524f2e50.b84bf",
+        "d": true,
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 690,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "8374892d.6c3f78",
+        "type": "mqtt in",
+        "z": "524f2e50.b84bf",
+        "name": "Domoticz out",
+        "topic": "domoticz/out",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "c502319b.76771",
+        "x": 230,
+        "y": 480,
+        "wires": [
+            [
+                "aed45624.e099e8"
+            ]
+        ]
+    },
+    {
+        "id": "aed45624.e099e8",
+        "type": "json",
+        "z": "524f2e50.b84bf",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 410,
+        "y": 480,
+        "wires": [
+            [
+                "3cb12eeb.bad8e2"
+            ]
+        ]
+    },
+    {
+        "id": "3cb12eeb.bad8e2",
+        "type": "function",
+        "z": "524f2e50.b84bf",
+        "name": "translate",
+        "func": "if(!(msg.payload.idx in global.get(\"domdevices\"))) {\n    return;\n}\n\nvar espdev = global.get(\"domdevices\")[msg.payload.idx];\n\n\nvar state=\"off\"\nif(msg.payload.nvalue == 1) {\n    state=\"on\"\n}\n\nvar newMsg = { payload: state,\n   topic: espdev + \"/switch/sonoff_basic_relay/command\"\n};\nreturn newMsg;   \n\n\n",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 600,
+        "y": 480,
+        "wires": [
+            [
+                "f9ae3233.95404",
+                "8efdafbd.4f497"
+            ]
+        ]
+    },
+    {
+        "id": "f9ae3233.95404",
+        "type": "debug",
+        "z": "524f2e50.b84bf",
+        "d": true,
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "topic",
+        "targetType": "msg",
+        "x": 760,
+        "y": 434,
+        "wires": []
+    },
+    {
+        "id": "6606f86e.2225b8",
+        "type": "function",
+        "z": "524f2e50.b84bf",
+        "name": "translate",
+        "func": "var espdev = msg.topic.split(\"/\")[0];\n\nif(!(espdev in global.get(\"espdevices\"))) {\n    return;\n}\n\nvar domidx = global.get(\"espdevices\")[espdev];\n\nvar state={  \"idx\" : domidx,  \"nvalue\" : 0,  \"svalue\" : \"Off\" }\n\nif(msg.payload == \"ON\") {\n    state={  \"idx\" : domidx,  \"nvalue\" : 1,  \"svalue\" : \"On\" }\n}\n\nreturn { payload: state };   \n",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 520,
+        "y": 359,
+        "wires": [
+            [
+                "cc07dcd3.13fe1",
+                "39815814.681578"
+            ]
+        ]
+    },
+    {
+        "id": "b1c54773.205dd8",
+        "type": "inject",
+        "z": "524f2e50.b84bf",
+        "name": "",
+        "topic": "",
+        "payload": "{\"irrigation_front\":213,\"irrigation_rear\":214}",
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "x": 230,
+        "y": 140,
+        "wires": [
+            [
+                "6f2f8fb1.0a532",
+                "19345aa3.af6f95"
+            ]
+        ]
+    },
+    {
+        "id": "6f2f8fb1.0a532",
+        "type": "change",
+        "z": "524f2e50.b84bf",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "espdevices",
+                "pt": "global",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 640,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "295e6315.acadfc",
+        "type": "change",
+        "z": "524f2e50.b84bf",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "domdevices",
+                "pt": "global",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 640,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "a7a3ea3.b9aa718",
+        "type": "comment",
+        "z": "524f2e50.b84bf",
+        "name": "Send domoticz command to ESPHome switch",
+        "info": "",
+        "x": 330,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "2bc710c0.d08f4",
+        "type": "comment",
+        "z": "524f2e50.b84bf",
+        "name": "Send ESPHome switch status back to domoticz",
+        "info": "",
+        "x": 340,
+        "y": 317,
+        "wires": []
+    },
+    {
+        "id": "e75228c3.b92258",
+        "type": "comment",
+        "z": "524f2e50.b84bf",
+        "name": "Configuration mapping globals",
+        "info": "",
+        "x": 280,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "19345aa3.af6f95",
+        "type": "function",
+        "z": "524f2e50.b84bf",
+        "name": "reverse dict",
+        "func": "var newMsg = {};\n\nvar ret = {};\nObject.keys(msg.payload).forEach(key => {\n    ret[msg.payload[key]] = key;\n  });\n//newMsg.payload = msg.payload;\n// = Object.assign({}, ...Object.entries(msg.payload).map(([a,b]) => ({ [b]: a })))\n\nnewMsg.payload = ret;\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 432,
+        "y": 200,
+        "wires": [
+            [
+                "295e6315.acadfc"
+            ]
+        ]
+    },
+    {
+        "id": "ec2ca25d.b1c3e",
+        "type": "debug",
+        "z": "524f2e50.b84bf",
+        "d": true,
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 610,
+        "y": 280,
+        "wires": []
+    }
+]
