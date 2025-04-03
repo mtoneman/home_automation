@@ -1,0 +1,692 @@
+# Processing irrigation (board: nodemcuv2; framework: arduino; platform: platformio/espressif8266@3.2.0)
+# --------------------------------------------------------------------------------
+# HARDWARE: ESP8266 80MHz, 80KB RAM, 4MB Flash
+
+# Based on ESPHome Sprinkler Controller - https://esphome.io/components/sprinkler.html
+# Change Log
+# 2023 01 XX
+  # Initial version
+  
+# 2023 04 09 V03
+  # fix run duration to seconds 
+# 2023 04 22 V04
+  # fix GPIO order to match relay 1- 4
+  # added % at the lambda return for progress sensor return value
+# 2023 04 25 V05
+  # added nodemcu as sensor to display in HA ui
+  # added includes for api key en ota password
+# 2023 05 07 V06
+  # added a NTC temp sensor to  watch the enclosure temperature
+# 2023 05 10 V07
+  # addjusted settings reference voltage to adjust to actual temp (default 3.3)
+# 2023 06 06 V08
+  # adjusted settings for valves corresponding to switches
+  # added repeat function
+# 2024 04 04 V09
+  # Corrected the value of KEY ESPHOME_PROJECT_VERSION due to compiling error esphome v2024.3.1
+  # initializer-string for 'char [30]' is too long
+  # changed 2023 06 06 V08 to 20240404_V09
+  # removed the text "Irrigation Controller.,"  
+# 2025 03 12 V10
+  # breaking change, configure platform explicitly
+
+# Establish Substitutions
+substitutions:
+### Modify only the following 6 lines.
+  zone_1_name: Fire Protection A
+  zone_2_name: Fire Protection B
+  zone_3_name: Fire Protection C
+  zone_4_name: Sprinkler A
+  zone_5_name: Sprinkler B
+  zone_6_name: Sprinkler C
+  zone_7_name: Sprinkler D
+  zone_8_name: Sprinkler E
+  zone_9_name: Sprinkler F
+  zone_10_name: Sprinkler G
+  software_version: 20250403_V01
+  sensor_update_frequency: 1s
+  log_level: debug # Enable levels logging https://esphome.io/components/logger.html
+  # none, error, warn, info, debug (default), verbose, very_verbose
+##############################################
+#  DO NOT CHANGE ANYTHING BELOW THIS LINE  ###
+##############################################
+  zone_1_valve_id: valve_0
+  zone_2_valve_id: valve_1
+  zone_3_valve_id: valve_2
+  zone_4_valve_id: valve_3
+  zone_5_valve_id: valve_4
+  zone_6_valve_id: valve_5
+  zone_7_valve_id: valve_6
+  zone_8_valve_id: valve_7
+  zone_9_valve_id: valve_8
+  zone_10_valve_id: valve_9
+  esphome_name: irrigation
+  esphome_board: nodemcu-32s
+  esphome_comment: Ten Valve Irrigation Controller
+  esphome_project_name: jaya.Irrigation Controller
+  esphome_project_version: $software_version
+  devicename: irrigation_controller
+  devicename_fireprotection: fireprotection_controller
+  upper_devicename: "Irrigation Controller"
+  upper_fireprotection_devicename: "Fire Protection Controller"
+  uom: Min # this overrides the uom in sprinkler -> run_duration 
+
+
+#Define Project Deatils and ESP Board Type
+esphome:
+  name: $esphome_name
+  comment: $esphome_comment
+  project:
+    name: $esphome_project_name
+    version: $esphome_project_version
+  on_boot:
+    priority: -100
+    then:
+      # Set default state for Valve Status
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "Idle"
+      - text_sensor.template.publish:
+          id: valve_fireprotection_status
+          state: "Idle"
+      # Set multiplier to 60, convert seconds to minutes
+      - sprinkler.set_multiplier:
+          id: $devicename
+          multiplier: 60
+      - sprinkler.set_multiplier:
+          id: $devicename_fireprotection
+          multiplier: 60
+
+esp32:
+  board: $esphome_board
+
+wifi:
+  ssid: !secret wifi_miot_ssid
+  password: !secret wifi_miot_password
+# Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "$esphome_name Fallback Hotspot"
+    password: !secret esphome_ap_password
+  
+logger:
+  level: ${log_level}
+  logs:
+    text_sensor: WARN
+  
+ota:
+  platform: esphome
+  password: !secret ota_miot_password
+# Enable Web server.
+web_server:
+  port: 80
+
+# Sync time with Home Assistant.
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+    
+###############################################
+# Enable Home Assistant API
+###############################################
+api:
+  encryption:
+    key: !secret esphome_api_encrypt_key
+  reboot_timeout: 0s
+
+###############################################
+# Binary Sensor.
+###############################################
+binary_sensor:
+  - platform: homeassistant
+    # prevent deep sleep - Needs further investigation on usefullness
+    id: prevent_deep_sleep
+    name: "$upper_devicename Prevent Deep Sleep"
+    entity_id: input_boolean.prevent_deep_sleep  
+###############################################
+# Text sensors with general information.
+###############################################
+text_sensor:
+  - platform: version # Expose ESPHome version as sensor.
+    name: $esphome_name ESPHome Version
+    hide_timestamp: false
+  - platform: wifi_info
+    ip_address:
+      name: "$esphome_name IP"
+    ssid:
+      name: "$esphome_name SSID"
+    bssid:
+      name: "$esphome_name BSSID"
+  
+# Expose Time Remaining as a sensor.
+  - platform: template
+    id: time_remaining
+    name: $upper_devicename Time Remaining
+    update_interval: $sensor_update_frequency
+    icon: "mdi:timer-sand"
+    lambda: |-
+      int seconds = round(id($devicename).time_remaining_active_valve().value_or(0));
+      int days = seconds / (24 * 3600);
+      seconds = seconds % (24 * 3600);
+      int hours = seconds / 3600;
+      seconds = seconds % 3600;
+      int minutes = seconds /  60;
+      seconds = seconds % 60;
+        return {
+          ((days ? String(days) + "d " : "") + 
+          (hours ? String(hours) + "h " : "") +
+          (minutes ? String(minutes) + "m " : "") +
+          (String(seconds) + "s")).c_str()};
+  - platform: template
+    id: time_fireprotection_remaining
+    name: $upper_fireprotection_devicename Time Remaining
+    update_interval: $sensor_update_frequency
+    icon: "mdi:timer-sand"
+    lambda: |-
+      int seconds = round(id($devicename_fireprotection).time_remaining_active_valve().value_or(0));
+      int days = seconds / (24 * 3600);
+      seconds = seconds % (24 * 3600);
+      int hours = seconds / 3600;
+      seconds = seconds % 3600;
+      int minutes = seconds /  60;
+      seconds = seconds % 60;
+        return {
+          ((days ? String(days) + "d " : "") + 
+          (hours ? String(hours) + "h " : "") +
+          (minutes ? String(minutes) + "m " : "") +
+          (String(seconds) + "s")).c_str()};
+
+
+  # Expose Progress Percent as a sensor.
+  - platform: template
+    id: progress_percent
+    name: $upper_devicename Progress %
+    update_interval: $sensor_update_frequency
+    icon: "mdi:progress-clock"
+    lambda: |-
+      int progress_percent = round(((id($devicename).valve_run_duration_adjusted(id($devicename).active_valve().value_or(0)) - id($devicename).time_remaining_active_valve().value_or(0)) * 100 / id($devicename).valve_run_duration_adjusted(id($devicename).active_valve().value_or(0))));
+      std::string progress_percent_as_string = std::to_string(progress_percent);
+      return progress_percent_as_string +"%";
+  
+  - platform: template
+    id: progress_fireprotection_percent
+    name: $upper_fireprotection_devicename Progress %
+    update_interval: $sensor_update_frequency
+    icon: "mdi:progress-clock"
+    lambda: |-
+      int progress_percent = round(((id($devicename_fireprotection).valve_run_duration_adjusted(id($devicename_fireprotection).active_valve().value_or(0)) - id($devicename_fireprotection).time_remaining_active_valve().value_or(0)) * 100 / id($devicename_fireprotection).valve_run_duration_adjusted(id($devicename_fireprotection).active_valve().value_or(0))));
+      std::string progress_percent_as_string = std::to_string(progress_percent);
+      return progress_percent_as_string +"%";
+
+  # Expose Valve Status as a sensor.
+  - platform: template
+    id: valve_status
+    name: $upper_devicename Status
+    update_interval: never
+    icon: "mdi:information-variant"
+
+  - platform: template
+    id: valve_fireprotection_status
+    name: $upper_fireprotection_devicename Status
+    update_interval: never
+    icon: "mdi:information-variant"
+
+  - platform: template # Expose the board type as a sensor
+    id: espboard_type
+    icon: "mdi:developer-board"
+    name: $esphome_name ESPBoard
+    lambda: |-
+      return to_string("${esphome_board}");
+
+# https://esphome.io/devices/nodemcu_esp8266.html
+# Enable On-Board Status LED.
+status_led:
+  pin:
+    # Pin D2 / GPIO4
+    number: GPIO04
+    inverted: false
+
+sensor:
+  # Uptime sensor.
+  - platform: uptime
+    name: $upper_devicename Uptime
+
+  # WiFi Signal sensor.
+  - platform: wifi_signal
+    name: $upper_devicename WiFi Signal
+    update_interval: 60s
+
+###############################################
+# Configuration to set multiplier via number 
+############################################### 
+number:
+  - platform: template
+    id: $zone_1_valve_id
+    name: $zone_1_name
+    min_value: 1
+    max_value: 60
+    step: 1
+    unit_of_measurement: $uom
+    icon: "mdi:timer-outline"
+    mode: box # Defines how the number should be displayed in the UI
+    lambda: "return id($devicename_fireprotection).valve_run_duration(0);"
+    set_action:
+      - sprinkler.set_valve_run_duration:
+          id: $devicename_fireprotection
+          valve_number: 0
+          run_duration: !lambda 'return x;'
+  - platform: template
+    id: $zone_2_valve_id
+    name: $zone_2_name
+    min_value: 1
+    max_value: 60
+    step: 1
+    unit_of_measurement: $uom
+    icon: "mdi:timer-outline"
+    mode: box # Defines how the number should be displayed in the UI
+    lambda: "return id($devicename_fireprotection).valve_run_duration(0);"
+    set_action:
+      - sprinkler.set_valve_run_duration:
+          id: $devicename_fireprotection
+          valve_number: 1
+          run_duration: !lambda 'return x;'
+  - platform: template
+    id: $zone_3_valve_id
+    name: $zone_3_name
+    min_value: 1
+    max_value: 60
+    step: 1
+    unit_of_measurement: $uom
+    icon: "mdi:timer-outline"
+    mode: box # Defines how the number should be displayed in the UI
+    lambda: "return id($devicename_fireprotection).valve_run_duration(0);"
+    set_action:
+      - sprinkler.set_valve_run_duration:
+          id: $devicename_fireprotection
+          valve_number: 2
+          run_duration: !lambda 'return x;'
+  - platform: template
+    id: $zone_4_valve_id
+    name: $zone_4_name
+    min_value: 1
+    max_value: 60
+    step: 1
+    unit_of_measurement: $uom
+    icon: "mdi:timer-outline"
+    mode: box # Defines how the number should be displayed in the UI
+    lambda: "return id($devicename).valve_run_duration(0);"
+    set_action:
+      - sprinkler.set_valve_run_duration:
+          id: $devicename
+          valve_number: 0
+          run_duration: !lambda 'return x;'
+  - platform: template
+    id: $zone_5_valve_id
+    name: $zone_5_name
+    min_value: 1
+    max_value: 60
+    step: 1
+    unit_of_measurement: $uom
+    icon: "mdi:timer-outline"
+    mode: box # Defines how the number should be displayed in the UI
+    lambda: "return id($devicename).valve_run_duration(0);"
+    set_action:
+      - sprinkler.set_valve_run_duration:
+          id: $devicename
+          valve_number: 1
+          run_duration: !lambda 'return x;'
+  - platform: template
+    id: $zone_6_valve_id
+    name: $zone_6_name
+    min_value: 1
+    max_value: 60
+    step: 1
+    unit_of_measurement: $uom
+    icon: "mdi:timer-outline"
+    mode: box # Defines how the number should be displayed in the UI
+    lambda: "return id($devicename).valve_run_duration(0);"
+    set_action:
+      - sprinkler.set_valve_run_duration:
+          id: $devicename
+          valve_number: 2
+          run_duration: !lambda 'return x;'
+  - platform: template
+    id: $zone_7_valve_id
+    name: $zone_7_name
+    min_value: 1
+    max_value: 60
+    step: 1
+    unit_of_measurement: $uom
+    icon: "mdi:timer-outline"
+    mode: box # Defines how the number should be displayed in the UI
+    lambda: "return id($devicename).valve_run_duration(0);"
+    set_action:
+      - sprinkler.set_valve_run_duration:
+          id: $devicename
+          valve_number: 3
+          run_duration: !lambda 'return x;'
+  - platform: template
+    id: $zone_8_valve_id
+    name: $zone_8_name
+    min_value: 1
+    max_value: 60
+    step: 1
+    unit_of_measurement: $uom
+    icon: "mdi:timer-outline"
+    mode: box # Defines how the number should be displayed in the UI
+    lambda: "return id($devicename).valve_run_duration(0);"
+    set_action:
+      - sprinkler.set_valve_run_duration:
+          id: $devicename
+          valve_number: 4
+          run_duration: !lambda 'return x;'
+  - platform: template
+    id: $zone_9_valve_id
+    name: $zone_9_name
+    min_value: 1
+    max_value: 60
+    step: 1
+    unit_of_measurement: $uom
+    icon: "mdi:timer-outline"
+    mode: box # Defines how the number should be displayed in the UI
+    lambda: "return id($devicename).valve_run_duration(0);"
+    set_action:
+      - sprinkler.set_valve_run_duration:
+          id: $devicename
+          valve_number: 5
+          run_duration: !lambda 'return x;'
+  - platform: template
+    id: $zone_10_valve_id
+    name: $zone_10_name
+    min_value: 1
+    max_value: 60
+    step: 1
+    unit_of_measurement: $uom
+    icon: "mdi:timer-outline"
+    mode: box # Defines how the number should be displayed in the UI
+    lambda: "return id($devicename).valve_run_duration(0);"
+    set_action:
+      - sprinkler.set_valve_run_duration:
+          id: $devicename
+          valve_number: 6
+          run_duration: !lambda 'return x;'
+  - platform: template
+    id: sprinkler_ctrlr_repeat_cycles
+    name: "Sprinkler Repeat Cycles"
+    min_value: 0
+    max_value: 4
+    step: 1
+    mode: box
+    icon: "mdi:water-sync"
+    lambda: "return id($devicename).repeat();"
+    set_action:
+      - sprinkler.set_repeat:
+          id: $devicename
+          repeat: !lambda 'return x;'
+  - platform: template
+    id: sprinkler_fireprotection_ctrlr_repeat_cycles
+    name: "Fire Protection Repeat Cycles"
+    min_value: 0
+    max_value: 4
+    step: 1
+    mode: box
+    icon: "mdi:water-sync"
+    lambda: "return id($devicename_fireprotection).repeat();"
+    set_action:
+      - sprinkler.set_repeat:
+          id: $devicename_fireprotection
+          repeat: !lambda 'return x;'
+
+###############################################
+# Main Sprinkler Controller
+###############################################
+sprinkler:
+
+  - id: $devicename_fireprotection
+    main_switch:
+      name: "Start/Stop/Resume Fireprotection"
+      id: main_fireprotection_switch
+    auto_advance_switch: "Auto Advance Fire Protection"
+    valve_open_delay: 2s
+    repeat_number: "Repeat Fire Protection"
+    valves:
+      - valve_switch: $zone_1_name
+        enable_switch: Enable $zone_1_name
+        run_duration: 15s
+        valve_switch_id: ${devicename_fireprotection}_1
+      - valve_switch: $zone_2_name
+        enable_switch: Enable $zone_2_name
+        run_duration: 15s
+        valve_switch_id: ${devicename_fireprotection}_2
+      - valve_switch: $zone_3_name
+        enable_switch: Enable $zone_3_name
+        run_duration: 15s
+        valve_switch_id: ${devicename_fireprotection}_3
+
+  - id: $devicename
+    main_switch:
+      name: "Start/Stop/Resume"
+      id: main_switch
+    auto_advance_switch: "Auto Advance"
+    valve_open_delay: 2s
+    repeat_number: "Repeat"
+    valves:
+      - valve_switch: $zone_4_name
+        enable_switch: Enable $zone_4_name
+        run_duration: 10s
+        valve_switch_id: ${devicename}_4
+      - valve_switch: $zone_5_name
+        enable_switch: Enable $zone_5_name
+        run_duration: 10s
+        valve_switch_id: ${devicename}_5
+      - valve_switch: $zone_6_name
+        enable_switch: Enable $zone_6_name
+        run_duration: 10s
+        valve_switch_id: ${devicename}_6
+      - valve_switch: $zone_7_name
+        enable_switch: Enable $zone_7_name
+        run_duration: 10s
+        valve_switch_id: ${devicename}_7
+      - valve_switch: $zone_8_name
+        enable_switch: Enable $zone_8_name
+        run_duration: 10s
+        valve_switch_id: ${devicename}_8
+      - valve_switch: $zone_9_name
+        enable_switch: Enable $zone_9_name
+        run_duration: 10s
+        valve_switch_id: ${devicename}_9
+      - valve_switch: $zone_10_name
+        enable_switch: Enable $zone_10_name
+        run_duration: 10s
+        valve_switch_id: ${devicename}_10
+
+
+button:
+  - platform: template
+    id: sprinkler_pause
+    name: "Pause"
+    icon: "mdi:pause"
+    on_press:
+      then:
+        - text_sensor.template.publish:
+            id: valve_status
+            state: "Paused"
+        - sprinkler.pause: $devicename
+  - platform: template
+    id: sprinkler_fireprotection_pause
+    name: "Pause Fire Protection"
+    icon: "mdi:pause"
+    on_press:
+      then:
+        - text_sensor.template.publish:
+            id: valve_fireprotection_status
+            state: "Paused"
+        - sprinkler.pause: $devicename_fireprotection
+
+####################################################
+# Switch Control to restart the irrigation system.   
+####################################################
+switch:
+  - platform: restart
+    name: "Restart Device"
+
+
+# Switch for the NTC https://esphome.io/components/sensor/ntc.html, Prevent self heating by switching the voltage on a GPIO
+#  - platform: gpio
+#    pin: 
+#      number: GPIO5 # Pin D1
+#      inverted: false
+#    id: ntc_vcc
+
+####################################################
+# Hidden I/O  Switches to control irrigation valve relays
+####################################################
+  - platform: gpio
+    name: Relay Board Pin IN1
+    restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
+    internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
+    id: ${devicename_fireprotection}_1
+    on_turn_on:
+      - text_sensor.template.publish:
+          id: valve_fireprotection_status
+          state: "$zone_1_name Active"
+    on_turn_off:
+      - text_sensor.template.publish:
+          id: valve_fireprotection_status
+          state: "Idle"
+    pin: GPIO16
+    inverted: true
+  - platform: gpio
+    name: Relay Board Pin IN2
+    restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
+    internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
+    id: ${devicename_fireprotection}_2
+    on_turn_on:
+      - text_sensor.template.publish:
+          id: valve_fireprotection_status
+          state: "$zone_2_name Active"
+    on_turn_off:
+      - text_sensor.template.publish:
+          id: valve_fireprotection_status
+          state: "Idle"
+    pin: GPIO17
+    inverted: true
+  - platform: gpio
+    name: Relay Board Pin IN3
+    restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
+    internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
+    id: ${devicename_fireprotection}_3
+    on_turn_on:
+      - text_sensor.template.publish:
+          id: valve_fireprotection_status
+          state: "$zone_3_name Active"
+    on_turn_off:
+      - text_sensor.template.publish:
+          id: valve_fireprotection_status
+          state: "Idle"
+    pin: GPIO18
+    inverted: true
+  - platform: gpio
+    name: Relay Board Pin IN4
+    restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
+    internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
+    id: ${devicename}_4
+    on_turn_on:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "$zone_4_name Active"
+    on_turn_off:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "Idle"
+    pin: GPIO19
+    inverted: true
+  - platform: gpio
+    name: Relay Board Pin IN5
+    restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
+    internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
+    id: ${devicename}_5
+    on_turn_on:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "$zone_5_name Active"
+    on_turn_off:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "Idle"
+    pin: GPIO21
+    inverted: true
+  - platform: gpio
+    name: Relay Board Pin IN6
+    restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
+    internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
+    id: ${devicename}_6
+    on_turn_on:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "$zone_6_name Active"
+    on_turn_off:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "Idle"
+    pin: GPIO22
+    inverted: true
+  - platform: gpio
+    name: Relay Board Pin IN7
+    restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
+    internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
+    id: ${devicename}_7
+    on_turn_on:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "$zone_7_name Active"
+    on_turn_off:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "Idle"
+    pin: GPIO23
+    inverted: true
+  - platform: gpio
+    name: Relay Board Pin IN8
+    restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
+    internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
+    id: ${devicename}_8
+    on_turn_on:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "$zone_8_name Active"
+    on_turn_off:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "Idle"
+    pin: GPIO25
+    inverted: true
+  - platform: gpio
+    name: Relay Board Pin IN9
+    restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
+    internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
+    id: ${devicename}_9
+    on_turn_on:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "$zone_9_name Active"
+    on_turn_off:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "Idle"
+    pin: GPIO26
+    inverted: true
+  - platform: gpio
+    name: Relay Board Pin IN10
+    restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
+    internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
+    id: ${devicename}_10
+    on_turn_on:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "$zone_10_name Active"
+    on_turn_off:
+      - text_sensor.template.publish:
+          id: valve_status
+          state: "Idle"
+    pin: GPIO27
+    inverted: true    
