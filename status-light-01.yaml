@@ -1,0 +1,75 @@
+substitutions:
+  name: status-light-01
+  friendly_name: "Status Light 01"
+
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  #  HOWTO: change the OTA password
+  #  on_boot:
+  #- lambda: id(my_ota).set_auth_password("New Password");
+
+esp8266:
+  board: esp01_1m
+  restore_from_flash: false
+  framework:
+    version: recommended
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # HOWTO change the name
+  #use_address: status_light_01.local
+
+safe_mode:
+
+ota:
+  password: !secret ota_password
+  platform: esphome
+
+
+logger:
+
+api:
+
+light:
+  - platform: status_led
+    name: "${friendly_name} blue led"
+    id: blueled
+    pin:
+      number: 2
+      inverted: yes
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: rgb
+    name: "${friendly_name} RGB light"
+    red: output_component1
+    green: output_component2
+    blue: output_component3
+    effects:
+      - pulse:
+      - pulse:
+          name: "Slow Pulse"
+          # transition_length: 1s      # defaults to 1s
+          update_interval: 2s
+      - flicker:
+      - random:
+      - random:
+          name: "Random Fast"
+          transition_length: 1s
+          update_interval: 1s
+        
+output:
+  - platform: esp8266_pwm
+    id: output_component1
+    pin: 0
+
+  - platform: esp8266_pwm
+    id: output_component2
+    max_power: 80%
+    pin: 1
+
+  - platform: esp8266_pwm
+    id: output_component3
+    pin: 3
+
