@@ -209,4 +209,4 @@ switch:
           id: valve_status
           state: "Idle"
     pin: GPIO12
-    inverted: true
+    inverted: false
