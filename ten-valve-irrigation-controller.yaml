@@ -10,7 +10,7 @@
 
 # Establish Substitutions
 substitutions:
-### Modify only the following 6 lines.
+### Modify the following 10 lines to reflect the naming of the valves
   zone_1_name: Fire Protection A
   zone_2_name: Fire Protection B
   zone_3_name: Fire Protection C
@@ -21,7 +21,7 @@ substitutions:
   zone_8_name: Sprinkler E
   zone_9_name: Sprinkler F
   zone_10_name: Sprinkler G
-  software_version: 20250408_V01
+  software_version: 20250408_V02
   sensor_update_frequency: 1s
   log_level: debug # Enable levels logging https://esphome.io/components/logger.html
   # none, error, warn, info, debug (default), verbose, very_verbose
@@ -43,10 +43,14 @@ substitutions:
   esphome_comment: Ten Valve Irrigation Controller
   esphome_project_name: jaya.Irrigation Controller
   esphome_project_version: $software_version
+  
+  # Regular Irrigation
   devicename: irrigation_controller
-  devicename_fireprotection: fireprotection_controller
   upper_devicename: "Irrigation Controller"
+  # Fire Protection Controller
+  devicename_fireprotection: fireprotection_controller
   upper_fireprotection_devicename: "Fire Protection Controller"
+  # Specify all times in minutes
   uom: Min # this overrides the uom in sprinkler -> run_duration 
 
 
@@ -234,6 +238,10 @@ sensor:
   - platform: wifi_signal
     name: $upper_devicename WiFi Signal
     update_interval: 60s
+
+  # Internal Temperature sensor
+  - platform: internal_temperature
+    name: "Internal Temperature"
 
 ###############################################
 # Configuration to set multiplier via number 
