@@ -237,13 +237,15 @@ text_sensor:
     lambda: |-
       return to_string("${esphome_board}");
 
-# https://esphome.io/devices/nodemcu_esp8266.html
-# Enable On-Board Status LED.
-status_led:
-  pin:
-    # Pin D2 / GPIO4
-    number: GPIO04
-    inverted: false
+
+# Enable Status LED.
+light:
+  - platform: status_led
+    name: "Status"
+    internal: True
+    pin: 
+      number: GPIO13
+      inverted: True
 
 sensor:
   # Uptime sensor.
@@ -529,19 +531,11 @@ switch:
   - platform: restart
     name: "Restart Device"
 
-
-# Switch for the NTC https://esphome.io/components/sensor/ntc.html, Prevent self heating by switching the voltage on a GPIO
-#  - platform: gpio
-#    pin: 
-#      number: GPIO5 # Pin D1
-#      inverted: false
-#    id: ntc_vcc
-
 ####################################################
 # Hidden I/O  Switches to control irrigation valve relays
 ####################################################
   - platform: gpio
-    name: Relay Board Pin IN1
+    name: Relay Board 1 Pin IN2
     restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
     internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
     id: ${devicename_fireprotection}_1
@@ -556,7 +550,7 @@ switch:
     pin: GPIO16
     inverted: true
   - platform: gpio
-    name: Relay Board Pin IN2
+    name: Relay Board 1 Pin IN1
     restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
     internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
     id: ${devicename_fireprotection}_2
@@ -571,7 +565,7 @@ switch:
     pin: GPIO17
     inverted: true
   - platform: gpio
-    name: Relay Board Pin IN3
+    name: Relay Board 2 Pin IN2
     restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
     internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
     id: ${devicename_fireprotection}_3
@@ -583,10 +577,10 @@ switch:
       - text_sensor.template.publish:
           id: valve_fireprotection_status
           state: "Idle"
-    pin: GPIO18
+    pin: GPIO21
     inverted: true
   - platform: gpio
-    name: Relay Board Pin IN4
+    name: Relay Board 2 Pin IN1
     restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
     internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
     id: ${devicename}_4
@@ -598,10 +592,10 @@ switch:
       - text_sensor.template.publish:
           id: valve_status
           state: "Idle"
-    pin: GPIO19
+    pin: GPIO22
     inverted: true
   - platform: gpio
-    name: Relay Board Pin IN5
+    name:  Relay Board 3 Pin IN6
     restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
     internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
     id: ${devicename}_5
@@ -613,10 +607,10 @@ switch:
       - text_sensor.template.publish:
           id: valve_status
           state: "Idle"
-    pin: GPIO21
+    pin: GPIO25
     inverted: true
   - platform: gpio
-    name: Relay Board Pin IN6
+    name:  Relay Board 3 Pin IN5
     restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
     internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
     id: ${devicename}_6
@@ -628,10 +622,10 @@ switch:
       - text_sensor.template.publish:
           id: valve_status
           state: "Idle"
-    pin: GPIO22
+    pin: GPIO27
     inverted: true
   - platform: gpio
-    name: Relay Board Pin IN7
+    name:  Relay Board 3 Pin IN4
     restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
     internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
     id: ${devicename}_7
@@ -643,10 +637,10 @@ switch:
       - text_sensor.template.publish:
           id: valve_status
           state: "Idle"
-    pin: GPIO23
+    pin: GPIO26
     inverted: true
   - platform: gpio
-    name: Relay Board Pin IN8
+    name: Relay Board 3 Pin IN3
     restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
     internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
     id: ${devicename}_8
@@ -658,10 +652,10 @@ switch:
       - text_sensor.template.publish:
           id: valve_status
           state: "Idle"
-    pin: GPIO25
+    pin: GPIO18
     inverted: true
   - platform: gpio
-    name: Relay Board Pin IN9
+    name: Relay Board 3 Pin IN2
     restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
     internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
     id: ${devicename}_9
@@ -673,10 +667,10 @@ switch:
       - text_sensor.template.publish:
           id: valve_status
           state: "Idle"
-    pin: GPIO26
+    pin: GPIO19
     inverted: true
   - platform: gpio
-    name: Relay Board Pin IN10
+    name: Relay Board 3 Pin IN1
     restore_mode: RESTORE_DEFAULT_OFF # Prevents GPIO pin from going high during boot
     internal: true # Prevents GPIO switch NAME from showing up in Home Assistant
     id: ${devicename}_10
@@ -688,5 +682,5 @@ switch:
       - text_sensor.template.publish:
           id: valve_status
           state: "Idle"
-    pin: GPIO27
+    pin: GPIO23
     inverted: true    
