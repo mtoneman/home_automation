@@ -1,34 +1,12 @@
 # Processing irrigation (board: nodemcuv2; framework: arduino; platform: platformio/espressif8266@3.2.0)
 # --------------------------------------------------------------------------------
-# HARDWARE: ESP8266 80MHz, 80KB RAM, 4MB Flash
-
+# HARDWARE: ESP32 D1 Mini NODEMCU 240MHz, 512kb RAM, 4Mb Flash
+#
+# 2 groups, 10 Valve irrigation controller 
+# Set up as one group for regular irrigation (7 valves) and one for fire prevention (3 valves)
+#
+# Based on: https://community.home-assistant.io/t/sprinkler-automation-with-esphome-a-complete-project/565077
 # Based on ESPHome Sprinkler Controller - https://esphome.io/components/sprinkler.html
-# Change Log
-# 2023 01 XX
-  # Initial version
-  
-# 2023 04 09 V03
-  # fix run duration to seconds 
-# 2023 04 22 V04
-  # fix GPIO order to match relay 1- 4
-  # added % at the lambda return for progress sensor return value
-# 2023 04 25 V05
-  # added nodemcu as sensor to display in HA ui
-  # added includes for api key en ota password
-# 2023 05 07 V06
-  # added a NTC temp sensor to  watch the enclosure temperature
-# 2023 05 10 V07
-  # addjusted settings reference voltage to adjust to actual temp (default 3.3)
-# 2023 06 06 V08
-  # adjusted settings for valves corresponding to switches
-  # added repeat function
-# 2024 04 04 V09
-  # Corrected the value of KEY ESPHOME_PROJECT_VERSION due to compiling error esphome v2024.3.1
-  # initializer-string for 'char [30]' is too long
-  # changed 2023 06 06 V08 to 20240404_V09
-  # removed the text "Irrigation Controller.,"  
-# 2025 03 12 V10
-  # breaking change, configure platform explicitly
 
 # Establish Substitutions
 substitutions:
@@ -43,7 +21,7 @@ substitutions:
   zone_8_name: Sprinkler E
   zone_9_name: Sprinkler F
   zone_10_name: Sprinkler G
-  software_version: 20250403_V01
+  software_version: 20250408_V01
   sensor_update_frequency: 1s
   log_level: debug # Enable levels logging https://esphome.io/components/logger.html
   # none, error, warn, info, debug (default), verbose, very_verbose
