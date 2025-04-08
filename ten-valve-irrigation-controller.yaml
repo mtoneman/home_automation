@@ -1,6 +1,6 @@
 # Processing irrigation (board: nodemcuv2; framework: arduino; platform: platformio/espressif8266@3.2.0)
 # --------------------------------------------------------------------------------
-# HARDWARE: ESP32 D1 Mini NODEMCU 240MHz, 512kb RAM, 4Mb Flash
+# HARDWARE: ESP32 240MHz, 320KB RAM, 4MB Flash
 #
 # 2 groups, 10 Valve irrigation controller 
 # Set up as one group for regular irrigation (7 valves) and one for fire prevention (3 valves)
